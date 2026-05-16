@@ -34,8 +34,7 @@ function initSockets(httpServer) {
             try {
                 const payload = typeof messagePayload === 'string' ? JSON.parse(messagePayload) : messagePayload;
                 
-                console.log('Received message from user:', socket.user._id, 'Content:', payload);
-
+           
                 await messageModel.create({
                     user: socket.user._id,
                     chat: payload.chat,
@@ -43,7 +42,14 @@ function initSockets(httpServer) {
                     role: 'user'
                 });
 
-                const aiResponse = await generateResponse(payload);
+                const chatHistory = await messageModel.find({ chat: payload.chat })
+                
+                const aiResponse = await generateResponse(chatHistory.map(msg => {
+                    return{
+                        role: msg.role,
+                        parts:[{ text: msg.content }]
+                    }
+                 }));
                 
                 await messageModel.create({
                     user: socket.user._id,
