@@ -1,0 +1,5 @@
+1. **Features:** Real-time communication, Gemini 2.5 streaming, aur MongoDB history save karne ke baare me clear points.
+2. **Tech Stack:** Frontend, Backend, Database aur AI Engine ki list.
+3. **Project Structure:** Folder organization kaise honi chahiye uska ek layout.
+4. **Setup Instructions:** `.env` file configuration se lekar backend aur frontend ko run karne ke steps.
+5. **Code Sneak Peek:** Socket.io aur Gemini stream ka backend logic example.
