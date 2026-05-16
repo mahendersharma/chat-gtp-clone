@@ -29,12 +29,12 @@ function initSockets(httpServer) {
     });
 
     io.on('connection', (socket) => {
-        
+
         socket.on('ai-message', async (messagePayload) => {
             try {
                 const payload = typeof messagePayload === 'string' ? JSON.parse(messagePayload) : messagePayload;
-                
-           
+
+
                 await messageModel.create({
                     user: socket.user._id,
                     chat: payload.chat,
@@ -42,15 +42,22 @@ function initSockets(httpServer) {
                     role: 'user'
                 });
 
-                const chatHistory = (await messageModel.find({ chat: payload.chat }).sort({ createdAt: 1 }).limit(20).lean()).reverse();
+                const chatHistory = (
+                    await messageModel
+                        .find({ chat: payload.chat })
+                        .sort({ createdAt: -1 }) 
+                        .limit(20)
+                        .lean()
+                ).reverse()
 
-                const aiResponse = await generateResponse(chatHistory.map(msg => { 
-                    return{
+                console.log("Chat history for AI response:", chatHistory);
+                const aiResponse = await generateResponse(chatHistory.map(msg => {
+                    return {
                         role: msg.role,
-                        parts:[{ text: msg.content }]
+                        parts: [{ text: msg.content }]
                     }
-                 }));
-                
+                }));
+
                 await messageModel.create({
                     user: socket.user._id,
                     chat: payload.chat,
