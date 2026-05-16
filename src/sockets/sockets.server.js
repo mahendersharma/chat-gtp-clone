@@ -42,9 +42,9 @@ function initSockets(httpServer) {
                     role: 'user'
                 });
 
-                const chatHistory = await messageModel.find({ chat: payload.chat })
-                
-                const aiResponse = await generateResponse(chatHistory.map(msg => {
+                const chatHistory = (await messageModel.find({ chat: payload.chat }).sort({ createdAt: 1 }).limit(20).lean()).reverse();
+
+                const aiResponse = await generateResponse(chatHistory.map(msg => { 
                     return{
                         role: msg.role,
                         parts:[{ text: msg.content }]
