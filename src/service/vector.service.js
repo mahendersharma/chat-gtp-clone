@@ -15,7 +15,8 @@ async function createMemory({ vector, metadata, messageId }) {
             values: vector,
             metadata: {
                 chat: String(metadata.chat),
-                user: String(metadata.user)
+                user: String(metadata.user),
+                text: String(metadata.text)
             }
         }
     ]);
