@@ -37,7 +37,7 @@ function initSockets(httpServer) {
             ? JSON.parse(messagePayload)
             : messagePayload;
 
-        await messageModel.create({
+        const message = await messageModel.create({
           user: socket.user._id,
           chat: payload.chat,
           content: payload.content,
@@ -46,25 +46,25 @@ function initSockets(httpServer) {
 
         const vector = await generateVector(payload.content);
 
+        const memory = await queryMemory({
+          queryVector: vector,
+          limit: 5,
+          metadata: {
+            user: socket.user._id,
+          },
+        });
+
+        console.log("Memory search results:", memory);
+
         await createMemory({
           vector,
-          messageId: new Date().getTime().toString(),
+          messageId: message._id,
           metadata: {
             chat: payload.chat.toString(),
             user: socket.user._id.toString(),
             text: payload.content,
           },
         });
-
-        const memory = await queryMemory({
-            queryVector:vector,
-            limit: 3,
-            metadata: {
-               
-            }
-        })
-
-        console.log("Retrieved memory from Pinecone:", memory);
 
         const chatHistory = (
           await messageModel
@@ -74,20 +74,46 @@ function initSockets(httpServer) {
             .lean()
         ).reverse();
 
-        const aiResponse = await generateResponse(
-          chatHistory.map((msg) => {
-            return {
-              role: msg.role,
-              parts: [{ text: msg.content }],
-            };
-          }),
-        );
+        const stm = chatHistory.map((msg) => {
+          return {
+            role: msg.role,
+            parts: [{ text: msg.content }],
+          };
+        });
 
-        await messageModel.create({
+        const ltm = [
+          {
+            role: "user",
+            parts: [
+              {
+                text: `there are some previous messages from the chat, use them to generate better response. ${memory.map((m) => m.metadata.text).join("\n")}`,
+              },
+            ],
+          },
+        ];
+
+        console.log("Sending to AI - LTM:", ltm);
+        console.log("Sending to AI - STM:", stm);
+
+        const aiResponse = await generateResponse([...ltm, ...stm]);
+
+        const responseMessage = await messageModel.create({
           user: socket.user._id,
           chat: payload.chat,
           content: aiResponse,
           role: "model",
+        });
+
+        const responseVector = await generateVector(aiResponse);
+
+        await createMemory({
+          vector: responseVector,
+          messageId: responseMessage._id,
+          metadata: {
+            chat: payload.chat,
+            user: socket.user._id,
+            text: aiResponse,
+          },
         });
 
         socket.emit("ai-response", {
