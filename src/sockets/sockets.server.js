@@ -2,8 +2,9 @@ const { Server } = require('socket.io');
 const cookie = require('cookie');
 const jwt = require('jsonwebtoken');
 const userModel = require('../models/user.model');
-const { generateResponse } = require('../service/ai-service');
+const { generateResponse, generateVector} = require('../service/ai-service');
 const messageModel = require('../models/message.model');
+const {createMemory,queryMemory} = require('../service/vector.service');
 
 function initSockets(httpServer) {
     const io = new Server(httpServer);
@@ -35,12 +36,23 @@ function initSockets(httpServer) {
                 const payload = typeof messagePayload === 'string' ? JSON.parse(messagePayload) : messagePayload;
 
 
-                await messageModel.create({
-                    user: socket.user._id,
-                    chat: payload.chat,
-                    content: payload.content,
-                    role: 'user'
-                });
+                // await messageModel.create({
+                //     user: socket.user._id,
+                //     chat: payload.chat,
+                //     content: payload.content,
+                //     role: 'user'
+                // });
+                  
+                const vector = await generateVector(payload.content);
+                
+                await createMemory({
+                    vector,
+                    messageId: "7878",
+                    metadata: {
+                          chat: payload.chat.toString(),
+        user: socket.user._id.toString()
+                    }
+                })
 
                 const chatHistory = (
                     await messageModel
@@ -50,7 +62,7 @@ function initSockets(httpServer) {
                         .lean()
                 ).reverse()
 
-                console.log("Chat history for AI response:", chatHistory);
+                // console.log("Chat history for AI response:", chatHistory);
                 const aiResponse = await generateResponse(chatHistory.map(msg => {
                     return {
                         role: msg.role,
